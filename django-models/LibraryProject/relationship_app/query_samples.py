@@ -6,7 +6,7 @@ from .models import Author, Book, Library, Librarian
 def books_by_author(author_name):
     try:
         author = Author.objects.get(name=author_name)
-        books = author.books.all()  # thanks to related_name='books' in Book model
+        books = Book.objects.filter(author=author) # thanks to related_name='books' in Book model
         return books
     except Author.DoesNotExist:
         return []
