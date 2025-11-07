@@ -23,6 +23,6 @@ def books_in_library(library_name):
 def get_librarian_for_library(library_name):
     try:
         library = Library.objects.get(name=library_name)
-        return library.librarian  # thanks to OneToOneField related_name
+        librarian = Librarian.objects.get(library=library) # thanks to OneToOneField related_name
     except Library.DoesNotExist:
         return None
