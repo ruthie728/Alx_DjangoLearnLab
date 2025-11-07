@@ -7,9 +7,8 @@ from .models import Book, Library
 # ==============================
 def list_books(request):
     """Display all books in the database."""
-    books = Book.objects.all()
-    context = {'books': books}
-    # Correct template path expected by the test
+    books = Book.objects.all()  # Fetch all books
+    context = {'books': books}  # Pass to template
     return render(request, 'relationship_app/list_books.html', context)
 
 
@@ -17,6 +16,8 @@ def list_books(request):
 # Class-based view
 # ==============================
 class LibraryDetailView(DetailView):
+    """Display details for a specific library, including all its books."""
     model = Library
-    template_name = 'relationship_app/library_detail.html'  # correct path
-    context_object_name = 'library'  # template will use {{ library }}
+    template_name = 'relationship_app/library_detail.html'  # Template path
+    context_object_name = 'library'  # Template will use {{ library }}
+    
