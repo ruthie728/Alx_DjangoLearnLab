@@ -3,7 +3,7 @@ from django.views.generic.detail import DetailView
 from django.contrib.auth import login, logout
 from django.contrib.auth.forms import UserCreationForm, AuthenticationForm
 from django.contrib.auth.decorators import login_required, user_passes_test, permission_required
-from .models import Book, Library, UserProfile
+from .models import Book, Library, UserProfile, Author
 
 # ==============================
 # Function-based view (Books)
@@ -87,7 +87,6 @@ def add_book(request):
         title = request.POST.get('title')
         author_id = request.POST.get('author')
         if title and author_id:
-            from .models import Author
             author = get_object_or_404(Author, pk=author_id)
             Book.objects.create(title=title, author=author)
             return redirect('list_books')
@@ -97,7 +96,6 @@ def add_book(request):
 @permission_required('relationship_app.can_change_book', raise_exception=True)
 def edit_book(request, book_id):
     book = get_object_or_404(Book, pk=book_id)
-    from .models import Author
     if request.method == 'POST':
         title = request.POST.get('title')
         author_id = request.POST.get('author')
