@@ -1,22 +1,27 @@
-# Security Overview
+# HTTPS and Secure Redirects
 
-This project implements best practices to secure the Django application.
+## HTTPS Configuration
+- SECURE_SSL_REDIRECT = True → Forces HTTPS
+- SECURE_HSTS_SECONDS = 31536000 → Enforces HSTS for 1 year
+- SECURE_HSTS_INCLUDE_SUBDOMAINS = True → HSTS applies to all subdomains
+- SECURE_HSTS_PRELOAD = True → Allows browser preload lists
 
-## Key Security Features
+## Secure Cookies
+- SESSION_COOKIE_SECURE = True
+- CSRF_COOKIE_SECURE = True
 
-- **DEBUG = False** in production
-- **CSRF Protection:** All forms use `{% csrf_token %}`.
-- **XSS & Browser Protections:**
-  - SECURE_BROWSER_XSS_FILTER = True
-  - SECURE_CONTENT_TYPE_NOSNIFF = True
-- **Clickjacking Protection:**
-  - X_FRAME_OPTIONS = 'DENY'
-- **HTTPS-only Cookies:**
-  - CSRF_COOKIE_SECURE = True
-  - SESSION_COOKIE_SECURE = True
-- **Content Security Policy (CSP):**
-  - CSP_DEFAULT_SRC = 'self'
-  - CSP_SCRIPT_SRC = 'self'
-  - CSP_STYLE_SRC = 'self'
-  - CSP_IMG_SRC = 'self'
-  - CSP_FONT_SRC = 'self'
+## Security Headers
+- X_FRAME_OPTIONS = 'DENY'
+- SECURE_CONTENT_TYPE_NOSNIFF = True
+- SECURE_BROWSER_XSS_FILTER = True
+
+## Deployment
+- Ensure SSL/TLS certificates are installed.
+- Redirect HTTP traffic to HTTPS in web server configuration.
+
+## Security Review
+These settings protect against:
+- Man-in-the-middle attacks (HTTPS)
+- Clickjacking (X_FRAME_OPTIONS)
+- XSS (browser XSS filter and CSP)
+- Cookie hijacking (secure cookies)
