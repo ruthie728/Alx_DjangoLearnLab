@@ -2,7 +2,7 @@ from django.contrib.auth.decorators import permission_required
 from django.shortcuts import render, get_object_or_404, redirect
 from .models import Book
 from .forms import BookForm  # import the form
-
+from .forms import ExampleForm
 # ------------------------------
 # View all books
 # Secure: Uses ORM to fetch data, permission required
