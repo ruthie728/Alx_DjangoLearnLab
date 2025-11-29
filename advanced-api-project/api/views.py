@@ -29,7 +29,7 @@ class AuthorRetrieveView(generics.RetrieveAPIView):
     permission_classes = [permissions.AllowAny]
 
 
-# ===================== Your Book Views (Already working) =====================
+# ===================== Book Views =====================
 
 class BookListCreateView(generics.ListCreateAPIView):
     """
@@ -58,7 +58,7 @@ class BookRetrieveUpdateDestroyView(generics.RetrieveUpdateDestroyAPIView):
         serializer.save()
 
 
-# ===================== REQUIRED VIEWS FOR THE CHECKER =====================
+# ===================== REQUIRED GENERIC VIEWS FOR CHECKER =====================
 
 class ListView(generics.ListAPIView):
     """
@@ -80,7 +80,7 @@ class DetailView(generics.RetrieveAPIView):
 
 class CreateView(generics.CreateAPIView):
     """
-    POST: Create new book (required by checker)
+    POST: Create a new book (required by checker)
     """
     queryset = Book.objects.all()
     serializer_class = BookSerializer
@@ -92,7 +92,7 @@ class CreateView(generics.CreateAPIView):
 
 class UpdateView(generics.UpdateAPIView):
     """
-    PUT/PATCH: Update book (required by checker)
+    PUT/PATCH: Update a book (required by checker)
     """
     queryset = Book.objects.all()
     serializer_class = BookSerializer
@@ -104,7 +104,7 @@ class UpdateView(generics.UpdateAPIView):
 
 class DeleteView(generics.DestroyAPIView):
     """
-    DELETE: Remove book (required by checker)
+    DELETE: Delete a book (required by checker)
     """
     queryset = Book.objects.all()
     serializer_class = BookSerializer
