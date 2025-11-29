@@ -30,10 +30,11 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
 
     # third-party apps
-    'rest_framework',     # Django REST Framework
+    'rest_framework',           # Django REST Framework
+    'django_filters',           # django-filter for DRF filtering
 
     # local apps
-    'api',                # your API app
+    'api',                      # your API app
 ]
 
 
@@ -108,11 +109,17 @@ STATIC_URL = 'static/'
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 
-# Optional: Django REST Framework settings
+# Django REST Framework configuration:
+# - Enables django-filter backend, SearchFilter, and OrderingFilter globally.
+# - Keeps JSONRenderer and BrowsableAPIRenderer (helpful for development/testing).
 REST_FRAMEWORK = {
+    'DEFAULT_FILTER_BACKENDS': (
+        'django_filters.rest_framework.DjangoFilterBackend',
+        'rest_framework.filters.SearchFilter',
+        'rest_framework.filters.OrderingFilter',
+    ),
     'DEFAULT_RENDERER_CLASSES': (
         'rest_framework.renderers.JSONRenderer',
-        # Uncomment below for browsable API:
-        # 'rest_framework.renderers.BrowsableAPIRenderer',
+        'rest_framework.renderers.BrowsableAPIRenderer',
     ),
 }
