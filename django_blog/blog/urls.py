@@ -6,21 +6,27 @@ from . import views
 app_name = 'blog'
 
 urlpatterns = [
-    # Home page (redirect to posts list)
+    # Home page
     path('', views.PostListView.as_view(), name='home'),
 
-    # Authentication URLs
+    # Authentication
     path('login/', auth_views.LoginView.as_view(template_name="login.html"), name='login'),
     path('logout/', auth_views.LogoutView.as_view(next_page="/"), name='logout'),
     path('register/', views.register, name='register'),
     path('profile/', views.profile_view, name='profile'),
 
-    # CRUD URLs for blog posts
-path('post/new/', views.PostCreateView.as_view(), name='post_create'),
-path('post/<int:pk>/', views.PostDetailView.as_view(), name='post_detail'),
-path('post/<int:pk>/update/', views.PostUpdateView.as_view(), name='post_update'),
-path('post/<int:pk>/delete/', views.PostDeleteView.as_view(), name='post_delete'),
-path('post/<int:post_id>/comments/new/', views.CommentCreateView.as_view(), name='comment_create'),
-path('comment/<int:pk>/update/', views.CommentUpdateView.as_view(), name='comment_update'),
-path('comment/<int:pk>/delete/', views.CommentDeleteView.as_view(), name='comment_delete'),
+    # ---------------------------
+    # Post CRUD URLs
+    # ---------------------------
+    path('post/new/', views.PostCreateView.as_view(), name='post_create'),
+    path('post/<int:pk>/', views.PostDetailView.as_view(), name='post_detail'),
+    path('post/<int:pk>/update/', views.PostUpdateView.as_view(), name='post_update'),
+    path('post/<int:pk>/delete/', views.PostDeleteView.as_view(), name='post_delete'),
+
+    # ---------------------------
+    # Comment URLs
+    # ---------------------------
+    path('post/<int:post_id>/comments/new/', views.CommentCreateView.as_view(), name='comment_create'),
+    path('comment/<int:pk>/update/', views.CommentUpdateView.as_view(), name='comment_update'),
+    path('comment/<int:pk>/delete/', views.CommentDeleteView.as_view(), name='comment_delete'),
 ]
