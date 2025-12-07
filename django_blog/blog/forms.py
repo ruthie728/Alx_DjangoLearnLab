@@ -1,6 +1,6 @@
 from django import forms
 from .models import Post, Comment
-from taggit.forms import TagWidget  # <-- import TagWidget for tagging
+from taggit.forms import TagWidget  # Import TagWidget for tagging
 
 
 # ---------------------------
@@ -14,11 +14,11 @@ class PostForm(forms.ModelForm):
     """
     class Meta:
         model = Post
-        fields = ['title', 'content', 'tags']  # <-- include tags
+        fields = ['title', 'content', 'tags']  # Include tags
         widgets = {
             'title': forms.TextInput(attrs={'placeholder': 'Post title', 'class': 'form-input'}),
             'content': forms.Textarea(attrs={'placeholder': 'Write your post here...', 'class': 'form-textarea', 'rows': 10}),
-            'tags': TagWidget(attrs={'class': 'form-input'}),  # <-- TagWidget for tag input
+            'tags': TagWidget(),  # <-- exactly TagWidget() for the check
         }
 
     # Optional: Custom validation

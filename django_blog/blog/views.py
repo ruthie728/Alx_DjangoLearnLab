@@ -2,19 +2,17 @@ from django.urls import reverse_lazy, reverse
 from django.views.generic import ListView, DetailView, CreateView, UpdateView, DeleteView
 from django.contrib.auth.mixins import LoginRequiredMixin, UserPassesTestMixin
 from django.contrib.auth.decorators import login_required
-from django.shortcuts import render, redirect, get_object_or_404
+from django.shortcuts import render, redirect
 from django.contrib import messages
-from django.db.models import Q
 
 from .models import Post, Comment
 from .forms import PostForm, CommentForm
-from taggit.models import Tag
-from taggit.forms import TagWidget
 
 
 # ---------------------------
-# Mixins for Access Control
+# Blog Post CRUD Views
 # ---------------------------
+
 class AuthorRequiredMixin(LoginRequiredMixin, UserPassesTestMixin):
     login_url = '/login/'
 
@@ -23,17 +21,6 @@ class AuthorRequiredMixin(LoginRequiredMixin, UserPassesTestMixin):
         return post.author == self.request.user
 
 
-class CommentAuthorRequiredMixin(LoginRequiredMixin, UserPassesTestMixin):
-    login_url = '/login/'
-
-    def test_func(self):
-        comment = self.get_object()
-        return comment.author == self.request.user
-
-
-# ---------------------------
-# Blog Post CRUD Views
-# ---------------------------
 class PostListView(ListView):
     model = Post
     template_name = 'blog/posts_list.html'
@@ -57,16 +44,11 @@ class PostCreateView(LoginRequiredMixin, CreateView):
     def form_valid(self, form):
         form.instance.author = self.request.user
         response = super().form_valid(form)
-        self.save_tags(self.object, form.cleaned_data.get("tags", ""))
+        # Tags are handled automatically by TaggableManager
         return response
 
-    def save_tags(self, post, tags_str):
-        tag_names = [t.strip().lower() for t in tags_str.split(",") if t.strip()]
-        tags = []
-        for name in tag_names:
-            tag, created = Tag.objects.get_or_create(name=name)
-            tags.append(tag)
-        post.tags.set(tags)
+    def get_success_url(self):
+        return reverse('blog:post_detail', kwargs={'pk': self.object.pk})
 
 
 class PostUpdateView(AuthorRequiredMixin, UpdateView):
@@ -76,16 +58,11 @@ class PostUpdateView(AuthorRequiredMixin, UpdateView):
 
     def form_valid(self, form):
         response = super().form_valid(form)
-        self.save_tags(self.object, form.cleaned_data.get("tags", ""))
+        # Tags are updated automatically by TaggableManager
         return response
 
-    def save_tags(self, post, tags_str):
-        tag_names = [t.strip().lower() for t in tags_str.split(",") if t.strip()]
-        tags = []
-        for name in tag_names:
-            tag, created = Tag.objects.get_or_create(name=name)
-            tags.append(tag)
-        post.tags.set(tags)
+    def get_success_url(self):
+        return reverse('blog:post_detail', kwargs={'pk': self.object.pk})
 
 
 class PostDeleteView(AuthorRequiredMixin, DeleteView):
@@ -97,6 +74,15 @@ class PostDeleteView(AuthorRequiredMixin, DeleteView):
 # ---------------------------
 # Comment CRUD Views
 # ---------------------------
+
+class CommentAuthorRequiredMixin(LoginRequiredMixin, UserPassesTestMixin):
+    login_url = '/login/'
+
+    def test_func(self):
+        comment = self.get_object()
+        return comment.author == self.request.user
+
+
 class CommentCreateView(LoginRequiredMixin, CreateView):
     model = Comment
     form_class = CommentForm
@@ -128,54 +114,6 @@ class CommentDeleteView(CommentAuthorRequiredMixin, DeleteView):
 
     def get_success_url(self):
         return reverse('blog:post_detail', kwargs={'pk': self.object.post.pk})
-
-
-# ---------------------------
-# Tag Views
-# ---------------------------
-class TagListView(ListView):
-    model = Post
-    template_name = 'blog/posts_by_tag.html'
-    context_object_name = 'posts'
-    paginate_by = 10
-
-    def get_queryset(self):
-        tag_name = self.kwargs['tag_name']
-        return Post.objects.filter(tags__name__iexact=tag_name).order_by('-published_date')
-
-    def get_context_data(self, **kwargs):
-        ctx = super().get_context_data(**kwargs)
-        ctx['tag_name'] = self.kwargs['tag_name']
-        return ctx
-
-
-# ---------------------------
-# Search View
-# ---------------------------
-class SearchResultsView(ListView):
-    model = Post
-    template_name = 'blog/search_results.html'
-    context_object_name = 'posts'
-    paginate_by = 10
-
-    def get_queryset(self):
-        query = self.request.GET.get("q", "").strip()
-        if not query:
-            return Post.objects.none()
-        return (
-            Post.objects.filter(
-                Q(title__icontains=query) |
-                Q(content__icontains=query) |
-                Q(tags__name__icontains=query)
-            )
-            .distinct()
-            .order_by('-published_date')
-        )
-
-    def get_context_data(self, **kwargs):
-        ctx = super().get_context_data(**kwargs)
-        ctx["query"] = self.request.GET.get("q", "")
-        return ctx
 
 
 # ---------------------------
