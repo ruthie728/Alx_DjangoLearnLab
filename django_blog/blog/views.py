@@ -1,14 +1,12 @@
-# blog/views.py
-from django.urls import reverse_lazy
+from django.urls import reverse_lazy, reverse
 from django.views.generic import ListView, DetailView, CreateView, UpdateView, DeleteView
 from django.contrib.auth.mixins import LoginRequiredMixin, UserPassesTestMixin
 from django.contrib.auth.decorators import login_required
 from django.shortcuts import render, redirect
 from django.contrib import messages
 
-from .models import Post
-from .forms import PostForm
-
+from .models import Post, Comment
+from .forms import PostForm, CommentForm
 
 # ---------------------------
 # Blog Post CRUD Views
@@ -16,7 +14,7 @@ from .forms import PostForm
 
 # Mixin to ensure only authors can edit or delete posts
 class AuthorRequiredMixin(LoginRequiredMixin, UserPassesTestMixin):
-    login_url = '/login/'  # Change to your login page if needed
+    login_url = '/login/'
 
     def test_func(self):
         post = self.get_object()
@@ -29,7 +27,7 @@ class PostListView(ListView):
     template_name = 'blog/posts_list.html'
     context_object_name = 'posts'
     paginate_by = 10
-    ordering = ['-created_at']  # newest first
+    ordering = ['-published_date']
 
 
 # View a single post (public)
@@ -62,7 +60,55 @@ class PostUpdateView(AuthorRequiredMixin, UpdateView):
 class PostDeleteView(AuthorRequiredMixin, DeleteView):
     model = Post
     template_name = 'blog/post_confirm_delete.html'
-    success_url = reverse_lazy('blog:post_list')  # fixed URL name
+    success_url = reverse_lazy('blog:posts_list')
+
+
+# ---------------------------
+# Comment CRUD Views
+# ---------------------------
+
+# Mixin to ensure only comment authors can edit/delete
+class CommentAuthorRequiredMixin(LoginRequiredMixin, UserPassesTestMixin):
+    login_url = '/login/'
+
+    def test_func(self):
+        comment = self.get_object()
+        return comment.author == self.request.user
+
+
+# Create a new comment
+class CommentCreateView(LoginRequiredMixin, CreateView):
+    model = Comment
+    form_class = CommentForm
+    template_name = 'blog/comment_form.html'
+    login_url = '/login/'
+
+    def form_valid(self, form):
+        form.instance.author = self.request.user
+        form.instance.post_id = self.kwargs['post_id']
+        return super().form_valid(form)
+
+    def get_success_url(self):
+        return reverse('blog:post_detail', kwargs={'pk': self.kwargs['post_id']})
+
+
+# Update a comment (only author)
+class CommentUpdateView(CommentAuthorRequiredMixin, UpdateView):
+    model = Comment
+    form_class = CommentForm
+    template_name = 'blog/comment_form.html'
+
+    def get_success_url(self):
+        return reverse('blog:post_detail', kwargs={'pk': self.object.post.pk})
+
+
+# Delete a comment (only author)
+class CommentDeleteView(CommentAuthorRequiredMixin, DeleteView):
+    model = Comment
+    template_name = 'blog/comment_confirm_delete.html'
+
+    def get_success_url(self):
+        return reverse('blog:post_detail', kwargs={'pk': self.object.post.pk})
 
 
 # ---------------------------
@@ -80,6 +126,6 @@ def profile_view(request):
         user.last_name = request.POST.get("last_name")
         user.save()
         messages.success(request, "Profile updated successfully.")
-        return redirect("blog:profile")  # Ensure this matches your urls.py
+        return redirect("blog:profile")
 
     return render(request, "blog/profile.html")
