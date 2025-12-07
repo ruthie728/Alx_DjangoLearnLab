@@ -4,15 +4,17 @@ from django.contrib.auth.mixins import LoginRequiredMixin, UserPassesTestMixin
 from django.contrib.auth.decorators import login_required
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib import messages
+from django.db.models import Q
 
 from .models import Post, Comment
 from .forms import PostForm, CommentForm
+from taggit.models import Tag
+from taggit.forms import TagWidget
+
 
 # ---------------------------
-# Blog Post CRUD Views
+# Mixins for Access Control
 # ---------------------------
-
-# Mixin to ensure only authors can edit or delete posts
 class AuthorRequiredMixin(LoginRequiredMixin, UserPassesTestMixin):
     login_url = '/login/'
 
@@ -21,7 +23,17 @@ class AuthorRequiredMixin(LoginRequiredMixin, UserPassesTestMixin):
         return post.author == self.request.user
 
 
-# List all posts (public)
+class CommentAuthorRequiredMixin(LoginRequiredMixin, UserPassesTestMixin):
+    login_url = '/login/'
+
+    def test_func(self):
+        comment = self.get_object()
+        return comment.author == self.request.user
+
+
+# ---------------------------
+# Blog Post CRUD Views
+# ---------------------------
 class PostListView(ListView):
     model = Post
     template_name = 'blog/posts_list.html'
@@ -30,14 +42,12 @@ class PostListView(ListView):
     ordering = ['-published_date']
 
 
-# View a single post (public)
 class PostDetailView(DetailView):
     model = Post
     template_name = 'blog/post_detail.html'
     context_object_name = 'post'
 
 
-# Create a new post (authenticated users only)
 class PostCreateView(LoginRequiredMixin, CreateView):
     model = Post
     form_class = PostForm
@@ -46,17 +56,38 @@ class PostCreateView(LoginRequiredMixin, CreateView):
 
     def form_valid(self, form):
         form.instance.author = self.request.user
-        return super().form_valid(form)
+        response = super().form_valid(form)
+        self.save_tags(self.object, form.cleaned_data.get("tags", ""))
+        return response
+
+    def save_tags(self, post, tags_str):
+        tag_names = [t.strip().lower() for t in tags_str.split(",") if t.strip()]
+        tags = []
+        for name in tag_names:
+            tag, created = Tag.objects.get_or_create(name=name)
+            tags.append(tag)
+        post.tags.set(tags)
 
 
-# Update a post (only author can update)
 class PostUpdateView(AuthorRequiredMixin, UpdateView):
     model = Post
     form_class = PostForm
     template_name = 'blog/post_form.html'
 
+    def form_valid(self, form):
+        response = super().form_valid(form)
+        self.save_tags(self.object, form.cleaned_data.get("tags", ""))
+        return response
 
-# Delete a post (only author can delete)
+    def save_tags(self, post, tags_str):
+        tag_names = [t.strip().lower() for t in tags_str.split(",") if t.strip()]
+        tags = []
+        for name in tag_names:
+            tag, created = Tag.objects.get_or_create(name=name)
+            tags.append(tag)
+        post.tags.set(tags)
+
+
 class PostDeleteView(AuthorRequiredMixin, DeleteView):
     model = Post
     template_name = 'blog/post_confirm_delete.html'
@@ -66,17 +97,6 @@ class PostDeleteView(AuthorRequiredMixin, DeleteView):
 # ---------------------------
 # Comment CRUD Views
 # ---------------------------
-
-# Mixin to ensure only comment authors can edit/delete
-class CommentAuthorRequiredMixin(LoginRequiredMixin, UserPassesTestMixin):
-    login_url = '/login/'
-
-    def test_func(self):
-        comment = self.get_object()
-        return comment.author == self.request.user
-
-
-# Create a new comment — FIXED to use pk instead of post_id
 class CommentCreateView(LoginRequiredMixin, CreateView):
     model = Comment
     form_class = CommentForm
@@ -93,7 +113,6 @@ class CommentCreateView(LoginRequiredMixin, CreateView):
         return reverse('blog:post_detail', kwargs={'pk': self.kwargs['pk']})
 
 
-# Update a comment (only author)
 class CommentUpdateView(CommentAuthorRequiredMixin, UpdateView):
     model = Comment
     form_class = CommentForm
@@ -103,7 +122,6 @@ class CommentUpdateView(CommentAuthorRequiredMixin, UpdateView):
         return reverse('blog:post_detail', kwargs={'pk': self.object.post.pk})
 
 
-# Delete a comment (only author)
 class CommentDeleteView(CommentAuthorRequiredMixin, DeleteView):
     model = Comment
     template_name = 'blog/comment_confirm_delete.html'
@@ -113,13 +131,58 @@ class CommentDeleteView(CommentAuthorRequiredMixin, DeleteView):
 
 
 # ---------------------------
+# Tag Views
+# ---------------------------
+class TagListView(ListView):
+    model = Post
+    template_name = 'blog/posts_by_tag.html'
+    context_object_name = 'posts'
+    paginate_by = 10
+
+    def get_queryset(self):
+        tag_name = self.kwargs['tag_name']
+        return Post.objects.filter(tags__name__iexact=tag_name).order_by('-published_date')
+
+    def get_context_data(self, **kwargs):
+        ctx = super().get_context_data(**kwargs)
+        ctx['tag_name'] = self.kwargs['tag_name']
+        return ctx
+
+
+# ---------------------------
+# Search View
+# ---------------------------
+class SearchResultsView(ListView):
+    model = Post
+    template_name = 'blog/search_results.html'
+    context_object_name = 'posts'
+    paginate_by = 10
+
+    def get_queryset(self):
+        query = self.request.GET.get("q", "").strip()
+        if not query:
+            return Post.objects.none()
+        return (
+            Post.objects.filter(
+                Q(title__icontains=query) |
+                Q(content__icontains=query) |
+                Q(tags__name__icontains=query)
+            )
+            .distinct()
+            .order_by('-published_date')
+        )
+
+    def get_context_data(self, **kwargs):
+        ctx = super().get_context_data(**kwargs)
+        ctx["query"] = self.request.GET.get("q", "")
+        return ctx
+
+
+# ---------------------------
 # User Profile View
 # ---------------------------
 @login_required
 def profile_view(request):
-    """
-    Display and edit the current user's profile.
-    """
     if request.method == "POST":
         user = request.user
         user.email = request.POST.get("email")
