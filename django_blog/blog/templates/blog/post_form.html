@@ -23,6 +23,8 @@
   <button type="submit" class="btn">
     {% if form.instance.pk %}Update{% else %}Publish{% endif %}
   </button>
-  <a class="btn-muted" href="{% url 'blog:post_list' %}">Cancel</a>
+
+  <!-- Fixed cancel URL -->
+  <a class="btn-muted" href="{% url 'blog:home' %}">Cancel</a>
 </form>
 {% endblock %}
