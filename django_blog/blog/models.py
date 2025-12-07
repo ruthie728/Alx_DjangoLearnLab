@@ -1,30 +1,198 @@
-from django.db import models
-from django.contrib.auth.models import User
+from django.urls import reverse_lazy, reverse
+from django.views.generic import ListView, DetailView, CreateView, UpdateView, DeleteView
+from django.contrib.auth.mixins import LoginRequiredMixin, UserPassesTestMixin
+from django.contrib.auth.decorators import login_required
+from django.db.models import Q
+from django.shortcuts import render, redirect
+from django.contrib import messages
 
-# ---------------------------
-# Post Model
-# ---------------------------
-class Post(models.Model):
-    title = models.CharField(max_length=200)
-    content = models.TextField()
-    published_date = models.DateTimeField(auto_now_add=True)
-    author = models.ForeignKey(User, on_delete=models.CASCADE, related_name="posts")
+from .models import Post, Comment, Tag
+from .forms import PostForm, CommentForm
 
-    def __str__(self):
-        return self.title
 
-# ---------------------------
-# Comment Model
-# ---------------------------
-class Comment(models.Model):
-    post = models.ForeignKey(Post, on_delete=models.CASCADE, related_name='comments')
-    author = models.ForeignKey(User, on_delete=models.CASCADE)
-    content = models.TextField()
-    created_at = models.DateTimeField(auto_now_add=True)
-    updated_at = models.DateTimeField(auto_now=True)
+# -----------------------------------
+# Mixins for Access Control
+# -----------------------------------
 
-    class Meta:
-        ordering = ['created_at']  # oldest first
+class AuthorRequiredMixin(LoginRequiredMixin, UserPassesTestMixin):
+    login_url = '/login/'
 
-    def __str__(self):
-        return f'Comment by {self.author.username} on "{self.post.title}"'
+    def test_func(self):
+        post = self.get_object()
+        return post.author == self.request.user
+
+
+class CommentAuthorRequiredMixin(LoginRequiredMixin, UserPassesTestMixin):
+    login_url = '/login/'
+
+    def test_func(self):
+        comment = self.get_object()
+        return comment.author == self.request.user
+
+
+# -----------------------------------
+# Post Views
+# -----------------------------------
+
+class PostListView(ListView):
+    model = Post
+    template_name = 'blog/posts_list.html'
+    context_object_name = 'posts'
+    paginate_by = 10
+    ordering = ['-published_date']
+
+
+class PostDetailView(DetailView):
+    model = Post
+    template_name = 'blog/post_detail.html'
+    context_object_name = 'post'
+
+
+class PostCreateView(LoginRequiredMixin, CreateView):
+    model = Post
+    form_class = PostForm
+    template_name = 'blog/post_form.html'
+    login_url = '/login/'
+
+    def form_valid(self, form):
+        form.instance.author = self.request.user
+        response = super().form_valid(form)
+        self.save_tags(self.object, form.cleaned_data.get("tags", ""))
+        return response
+
+    def save_tags(self, post, tags_str):
+        tag_names = [t.strip().lower() for t in tags_str.split(",") if t.strip()]
+        tags = []
+        for name in tag_names:
+            tag, created = Tag.objects.get_or_create(name=name)
+            tags.append(tag)
+        post.tags.set(tags)
+
+
+class PostUpdateView(AuthorRequiredMixin, UpdateView):
+    model = Post
+    form_class = PostForm
+    template_name = 'blog/post_form.html'
+
+    def form_valid(self, form):
+        response = super().form_valid(form)
+        self.save_tags(self.object, form.cleaned_data.get("tags", ""))
+        return response
+
+    def save_tags(self, post, tags_str):
+        tag_names = [t.strip().lower() for t in tags_str.split(",") if t.strip()]
+        tags = []
+        for name in tag_names:
+            tag, created = Tag.objects.get_or_create(name=name)
+            tags.append(tag)
+        post.tags.set(tags)
+
+
+class PostDeleteView(AuthorRequiredMixin, DeleteView):
+    model = Post
+    template_name = 'blog/post_confirm_delete.html'
+    success_url = reverse_lazy('blog:posts_list')
+
+
+# -----------------------------------
+# Comment Views
+# -----------------------------------
+
+class CommentCreateView(LoginRequiredMixin, CreateView):
+    model = Comment
+    form_class = CommentForm
+    template_name = 'blog/comment_form.html'
+
+    def form_valid(self, form):
+        form.instance.author = self.request.user
+        form.instance.post_id = self.kwargs["post_id"]
+        return super().form_valid(form)
+
+    def get_success_url(self):
+        return reverse("blog:post_detail", kwargs={"pk": self.kwargs["post_id"]})
+
+
+class CommentUpdateView(CommentAuthorRequiredMixin, UpdateView):
+    model = Comment
+    form_class = CommentForm
+    template_name = 'blog/comment_form.html'
+
+    def get_success_url(self):
+        return reverse("blog:post_detail", kwargs={"pk": self.object.post.pk})
+
+
+class CommentDeleteView(CommentAuthorRequiredMixin, DeleteView):
+    model = Comment
+    template_name = 'blog/comment_confirm_delete.html'
+
+    def get_success_url(self):
+        return reverse("blog:post_detail", kwargs={"pk": self.object.post.pk})
+
+
+# -----------------------------------
+# Tag View (Posts filtered by tag)
+# -----------------------------------
+
+class TagListView(ListView):
+    model = Post
+    template_name = 'blog/posts_by_tag.html'
+    context_object_name = 'posts'
+    paginate_by = 10
+
+    def get_queryset(self):
+        tag_name = self.kwargs['tag_name']
+        return Post.objects.filter(tags__name__iexact=tag_name).order_by('-published_date')
+
+    def get_context_data(self, **kwargs):
+        ctx = super().get_context_data(**kwargs)
+        ctx['tag_name'] = self.kwargs['tag_name']
+        return ctx
+
+
+# -----------------------------------
+# Search View
+# -----------------------------------
+
+class SearchResultsView(ListView):
+    model = Post
+    template_name = 'blog/search_results.html'
+    context_object_name = 'posts'
+    paginate_by = 10
+
+    def get_queryset(self):
+        query = self.request.GET.get("q", "").strip()
+        if not query:
+            return Post.objects.none()
+
+        return (
+            Post.objects.filter(
+                Q(title__icontains=query)
+                | Q(content__icontains=query)
+                | Q(tags__name__icontains=query)
+            )
+            .distinct()
+            .order_by("-published_date")
+        )
+
+    def get_context_data(self, **kwargs):
+        ctx = super().get_context_data(**kwargs)
+        ctx["query"] = self.request.GET.get("q", "")
+        return ctx
+
+
+# -----------------------------------
+# User Profile View
+# -----------------------------------
+
+@login_required
+def profile_view(request):
+    if request.method == "POST":
+        user = request.user
+        user.email = request.POST.get("email")
+        user.first_name = request.POST.get("first_name")
+        user.last_name = request.POST.get("last_name")
+        user.save()
+        messages.success(request, "Profile updated successfully.")
+        return redirect("blog:profile")
+
+    return render(request, "blog/profile.html")
