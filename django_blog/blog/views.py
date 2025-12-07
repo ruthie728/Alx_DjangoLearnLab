@@ -1,4 +1,5 @@
-from django.urls import reverse_lazy, reverse
+# blog/views.py
+from django.urls import reverse, reverse_lazy
 from django.views.generic import ListView, DetailView, CreateView, UpdateView, DeleteView
 from django.contrib.auth.mixins import LoginRequiredMixin, UserPassesTestMixin
 from django.contrib.auth.decorators import login_required
@@ -11,7 +12,7 @@ from .forms import PostForm, CommentForm
 
 
 # ---------------------------
-# Blog Post CRUD Views
+# Mixins for Access Control
 # ---------------------------
 
 class AuthorRequiredMixin(LoginRequiredMixin, UserPassesTestMixin):
@@ -21,6 +22,18 @@ class AuthorRequiredMixin(LoginRequiredMixin, UserPassesTestMixin):
         post = self.get_object()
         return post.author == self.request.user
 
+
+class CommentAuthorRequiredMixin(LoginRequiredMixin, UserPassesTestMixin):
+    login_url = '/login/'
+
+    def test_func(self):
+        comment = self.get_object()
+        return comment.author == self.request.user
+
+
+# ---------------------------
+# Post Views
+# ---------------------------
 
 class PostListView(ListView):
     model = Post
@@ -65,20 +78,12 @@ class PostUpdateView(AuthorRequiredMixin, UpdateView):
 class PostDeleteView(AuthorRequiredMixin, DeleteView):
     model = Post
     template_name = 'blog/post_confirm_delete.html'
-    success_url = reverse_lazy('blog:posts_list')
+    success_url = reverse_lazy('blog:home')
 
 
 # ---------------------------
-# Comment CRUD Views
+# Comment Views
 # ---------------------------
-
-class CommentAuthorRequiredMixin(LoginRequiredMixin, UserPassesTestMixin):
-    login_url = '/login/'
-
-    def test_func(self):
-        comment = self.get_object()
-        return comment.author == self.request.user
-
 
 class CommentCreateView(LoginRequiredMixin, CreateView):
     model = Comment
@@ -116,6 +121,7 @@ class CommentDeleteView(CommentAuthorRequiredMixin, DeleteView):
 # ---------------------------
 # Search View
 # ---------------------------
+
 class SearchResultsView(ListView):
     model = Post
     template_name = 'blog/search_results.html'
@@ -126,8 +132,11 @@ class SearchResultsView(ListView):
         query = self.request.GET.get("q", "").strip()
         if not query:
             return Post.objects.none()
-        # One-line filter to satisfy auto-checker
-        return Post.objects.filter(Q(title__icontains=query)|Q(content__icontains=query)|Q(tags__name__icontains=query)).distinct().order_by('-published_date')
+        return Post.objects.filter(
+            Q(title__icontains=query) |
+            Q(content__icontains=query) |
+            Q(tags__name__icontains=query)
+        ).distinct().order_by('-published_date')
 
     def get_context_data(self, **kwargs):
         ctx = super().get_context_data(**kwargs)
@@ -136,8 +145,29 @@ class SearchResultsView(ListView):
 
 
 # ---------------------------
+# Posts By Tag
+# ---------------------------
+
+class PostByTagListView(ListView):
+    model = Post
+    template_name = 'blog/posts_by_tag.html'
+    context_object_name = 'posts'
+    paginate_by = 10
+
+    def get_queryset(self):
+        tag_slug = self.kwargs['tag_slug']
+        return Post.objects.filter(tags__slug=tag_slug).order_by('-published_date')
+
+    def get_context_data(self, **kwargs):
+        ctx = super().get_context_data(**kwargs)
+        ctx['tag_slug'] = self.kwargs['tag_slug']
+        return ctx
+
+
+# ---------------------------
 # User Profile View
 # ---------------------------
+
 @login_required
 def profile_view(request):
     if request.method == "POST":

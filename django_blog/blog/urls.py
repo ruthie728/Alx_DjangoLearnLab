@@ -21,17 +21,13 @@ urlpatterns = [
     path('post/<int:pk>/update/', views.PostUpdateView.as_view(), name='post_update'),
     path('post/<int:pk>/delete/', views.PostDeleteView.as_view(), name='post_delete'),
 
-    # Comment URLs (checker requires pk)
+    # Comment CRUD
     path('post/<int:pk>/comments/new/', views.CommentCreateView.as_view(), name='comment_create'),
     path('comment/<int:pk>/update/', views.CommentUpdateView.as_view(), name='comment_update'),
     path('comment/<int:pk>/delete/', views.CommentDeleteView.as_view(), name='comment_delete'),
 
-    # -------------------------
-    # TAGGING + SEARCH (NEW)
-    # -------------------------
-
-    # List all posts for a specific tag
-    path('tags/<str:tag_name>/', views.PostsByTagView.as_view(), name='posts_by_tag'),
+    # Tag URL
+    path('tags/<slug:tag_slug>/', views.PostByTagListView.as_view(), name='posts_by_tag'),
 
     # Search URL
     path('search/', views.SearchResultsView.as_view(), name='search_results'),
