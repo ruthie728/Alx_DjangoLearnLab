@@ -1,0 +1,41 @@
+{% extends "blog/base.html" %}
+{% block title %}{% if form.instance.pk %}Edit Post{% else %}Create Post{% endif %}{% endblock %}
+
+{% block content %}
+  <h1>{% if form.instance.pk %}Edit Post{% else %}Create Post{% endif %}</h1>
+
+  <form method="post">
+    {% csrf_token %}
+    {{ form.non_field_errors }}
+    <div class="form-field">
+      {{ form.title.label_tag }}<br>
+      {{ form.title }}
+      {{ form.title.errors }}
+    </div>
+
+    <div class="form-field">
+      {{ form.content.label_tag }}<br>
+      {{ form.content }}
+      {{ form.content.errors }}
+    </div>
+
+    <button type="submit" class="btn">{% if form.instance.pk %}Update{% else %}Publish{% endif %}</button>
+    <a class="btn-muted" href="{% url 'blog:posts_list' %}">Cancel</a>
+  </form>
+{% endblock %}
+post_confirm_delete.html
+html
+Copy code
+{% extends "blog/base.html" %}
+{% block title %}Delete Post{% endblock %}
+
+{% block content %}
+  <h1>Delete Post</h1>
+  <p>Are you sure you want to delete "<strong>{{ object.title }}</strong>"?</p>
+
+  <form method="post">
+    {% csrf_token %}
+    <button type="submit" class="btn-danger">Yes — Delete</button>
+    <a class="btn-muted" href="{% url 'blog:post_detail' object.pk %}">Cancel</a>
+  </form>
+{% endblock %}
