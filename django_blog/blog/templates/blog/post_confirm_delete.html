@@ -2,12 +2,14 @@
 {% block title %}Delete Post{% endblock %}
 
 {% block content %}
-  <h1>Delete Post</h1>
-  <p>Are you sure you want to delete "<strong>{{ object.title }}</strong>"?</p>
+<h1>Delete Post</h1>
+<p>Are you sure you want to delete "<strong>{{ object.title }}</strong>"?</p>
 
-  <form method="post">
-    {% csrf_token %}
-    <button type="submit" class="btn-danger">Yes — Delete</button>
-    <a class="btn-muted" href="{% url 'blog:post_detail' object.pk %}">Cancel</a>
-  </form>
+<form method="post">
+  {% csrf_token %}
+  <button type="submit" class="btn btn-danger">Yes — Delete</button>
+  <a class="btn btn-muted" href="{% url 'blog:post_detail' object.pk %}">Cancel</a>
+</form>
+
+<p><a href="{% url 'blog:post_list' %}">← Back to all posts</a></p>
 {% endblock %}

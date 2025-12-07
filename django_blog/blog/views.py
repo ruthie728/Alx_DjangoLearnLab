@@ -2,71 +2,84 @@
 from django.urls import reverse_lazy
 from django.views.generic import ListView, DetailView, CreateView, UpdateView, DeleteView
 from django.contrib.auth.mixins import LoginRequiredMixin, UserPassesTestMixin
+from django.contrib.auth.decorators import login_required
+from django.shortcuts import render, redirect
+from django.contrib import messages
+
 from .models import Post
 from .forms import PostForm
 
-# List all posts — public
+
+# ---------------------------
+# Blog Post CRUD Views
+# ---------------------------
+
+# Mixin to ensure only authors can edit or delete posts
+class AuthorRequiredMixin(LoginRequiredMixin, UserPassesTestMixin):
+    login_url = '/login/'  # Change to your login page if needed
+
+    def test_func(self):
+        post = self.get_object()
+        return post.author == self.request.user
+
+
+# List all posts (public)
 class PostListView(ListView):
     model = Post
-    template_name = 'blog/posts_list.html'   # template we will create
+    template_name = 'blog/posts_list.html'
     context_object_name = 'posts'
-    paginate_by = 10  # optional pagination
+    paginate_by = 10
+    ordering = ['-created_at']  # newest first
 
-# View a single post — public
+
+# View a single post (public)
 class PostDetailView(DetailView):
     model = Post
     template_name = 'blog/post_detail.html'
     context_object_name = 'post'
 
-# Create a new post — authenticated users only
+
+# Create a new post (authenticated users only)
 class PostCreateView(LoginRequiredMixin, CreateView):
     model = Post
     form_class = PostForm
     template_name = 'blog/post_form.html'
-    login_url = '/admin/login/'  # default login page; adjust if you add custom auth
+    login_url = '/login/'
 
     def form_valid(self, form):
-        # set the post author to the current user
         form.instance.author = self.request.user
         return super().form_valid(form)
 
-# Update a post — only author can update
-class PostUpdateView(LoginRequiredMixin, UserPassesTestMixin, UpdateView):
+
+# Update a post (only author can update)
+class PostUpdateView(AuthorRequiredMixin, UpdateView):
     model = Post
     form_class = PostForm
     template_name = 'blog/post_form.html'
-    login_url = '/admin/login/'
 
-    def test_func(self):
-        # only author can edit
-        post = self.get_object()
-        return post.author == self.request.user
 
-# Delete a post — only author can delete
-class PostDeleteView(LoginRequiredMixin, UserPassesTestMixin, DeleteView):
+# Delete a post (only author can delete)
+class PostDeleteView(AuthorRequiredMixin, DeleteView):
     model = Post
     template_name = 'blog/post_confirm_delete.html'
-    success_url = reverse_lazy('blog:posts_list')
-    login_url = '/admin/login/'
+    success_url = reverse_lazy('blog:post_list')  # fixed URL name
 
-    def test_func(self):
-        # only author can delete
-        post = self.get_object()
-        return post.author == self.request.user
-    
-    # --- User Profile View ---
-from django.contrib.auth.decorators import login_required
-from django.shortcuts import render, redirect
 
+# ---------------------------
+# User Profile View
+# ---------------------------
 @login_required
 def profile_view(request):
+    """
+    Display and edit the current user's profile.
+    """
     if request.method == "POST":
         user = request.user
         user.email = request.POST.get("email")
         user.first_name = request.POST.get("first_name")
         user.last_name = request.POST.get("last_name")
-        user.save()  # important for the checker
-
-        return redirect("blog:profile")
+        user.save()
+        messages.success(request, "Profile updated successfully.")
+        return redirect("blog:profile")  # Ensure this matches your urls.py
 
     return render(request, "blog/profile.html")
