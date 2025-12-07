@@ -2,7 +2,7 @@ from django.urls import reverse_lazy, reverse
 from django.views.generic import ListView, DetailView, CreateView, UpdateView, DeleteView
 from django.contrib.auth.mixins import LoginRequiredMixin, UserPassesTestMixin
 from django.contrib.auth.decorators import login_required
-from django.shortcuts import render, redirect
+from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib import messages
 
 from .models import Post, Comment
@@ -76,7 +76,7 @@ class CommentAuthorRequiredMixin(LoginRequiredMixin, UserPassesTestMixin):
         return comment.author == self.request.user
 
 
-# Create a new comment
+# Create a new comment — FIXED to use pk instead of post_id
 class CommentCreateView(LoginRequiredMixin, CreateView):
     model = Comment
     form_class = CommentForm
@@ -84,12 +84,13 @@ class CommentCreateView(LoginRequiredMixin, CreateView):
     login_url = '/login/'
 
     def form_valid(self, form):
+        post = get_object_or_404(Post, pk=self.kwargs['pk'])
+        form.instance.post = post
         form.instance.author = self.request.user
-        form.instance.post_id = self.kwargs['post_id']
         return super().form_valid(form)
 
     def get_success_url(self):
-        return reverse('blog:post_detail', kwargs={'pk': self.kwargs['post_id']})
+        return reverse('blog:post_detail', kwargs={'pk': self.kwargs['pk']})
 
 
 # Update a comment (only author)
