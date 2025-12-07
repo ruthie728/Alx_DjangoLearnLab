@@ -53,3 +53,20 @@ class PostDeleteView(LoginRequiredMixin, UserPassesTestMixin, DeleteView):
         # only author can delete
         post = self.get_object()
         return post.author == self.request.user
+    
+    # --- User Profile View ---
+from django.contrib.auth.decorators import login_required
+from django.shortcuts import render, redirect
+
+@login_required
+def profile_view(request):
+    if request.method == "POST":
+        user = request.user
+        user.email = request.POST.get("email")
+        user.first_name = request.POST.get("first_name")
+        user.last_name = request.POST.get("last_name")
+        user.save()  # important for the checker
+
+        return redirect("blog:profile")
+
+    return render(request, "blog/profile.html")

@@ -1,7 +1,20 @@
-{% extends "base.html" %}
-{% block title %}Profile{% endblock %}
+{% extends "blog/base.html" %}
+
 {% block content %}
-<h2>Your Profile</h2>
-<p>Username: {{ user.username }}</p>
-<p>Email: {{ user.email }}</p>
+<h2>User Profile</h2>
+
+<form method="POST">
+    {% csrf_token %}
+
+    <label>Email:</label>
+    <input type="email" name="email" value="{{ request.user.email }}">
+
+    <label>First name:</label>
+    <input type="text" name="first_name" value="{{ request.user.first_name }}">
+
+    <label>Last name:</label>
+    <input type="text" name="last_name" value="{{ request.user.last_name }}">
+
+    <button type="submit">Save Changes</button>
+</form>
 {% endblock %}
