@@ -32,3 +32,21 @@ Dependencies are listed in:
 
 ### Procfile
 The project uses Gunicorn as the WSGI server.
+
+# Deployment Documentation
+
+## Deployment Steps
+1. Code pushed to GitHub repository
+2. Repository connected to Render
+3. Root directory set to `social_media_api`
+4. Environment variables configured on Render
+5. Run `python manage.py collectstatic` locally
+6. Application deployed successfully
+
+## Live Application URL
+https://social_media_api.onrender.com
+
+## Monitoring and Maintenance
+- Application logs monitored via Render dashboard
+- Dependencies updated regularly
+- Redeployment done after code changes
